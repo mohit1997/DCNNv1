@@ -1,4 +1,4 @@
-# DCNN
+# DCNNv1
 
 Code for Detection of Glottal Closure Instants using Deep
 Dilated Convolutional Neural Networks
