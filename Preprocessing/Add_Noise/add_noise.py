@@ -25,7 +25,7 @@ def main(args):
     output_folder = args.output_folder
     os.makedirs(output_folder, exist_ok=True)
     noise_type = args.noise.lower()
-    babble = wavread('noise.wav')
+    babble = wavread('noise.wav')[1]
     snr = args.snr
 
     input_files = glob(os.path.join(input_folder, '*.npy'))
