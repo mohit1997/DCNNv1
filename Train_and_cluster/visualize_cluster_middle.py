@@ -22,8 +22,8 @@ th.manual_seed(42)
 th.cuda.manual_seed_all(42)
 random.seed(42)
 
-
 result = 'test_idr_aplawdtoslt.txt'
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -122,19 +122,19 @@ def main():
         #         np.expand_dims(speech_windowed_data, 1).astype(np.float32)),
         #     args.use_cuda, True)
 
-        input = Variable(th.from_numpy(
-                 np.expand_dims(speech_windowed_data, 1).astype(np.float32))).cuda()
+        input = Variable(
+            th.from_numpy(
+                np.expand_dims(speech_windowed_data,
+                               1).astype(np.float32))).cuda()
 
         with warnings.catch_warnings():
             with th.no_grad():
                 prediction = model(input)
                 prediction = prediction.cpu()
 
-
-        predicted_peak_indicator = F.sigmoid(prediction[:, 0]).data.numpy()
+        predicted_peak_indicator = th.sigmoid(prediction[:, 0]).data.numpy()
         predicted_peak_distance = (prediction[:, 1]).data.numpy().astype(
             np.int32)
-
 
         del input
         del prediction
@@ -162,11 +162,9 @@ def main():
 
         # print(indices.shape, indices)
 
-
         gci_locations = [
             indices[i, d] for i, d in enumerate(positive_peak_distances)
         ]
-
 
         locations_true = np.nonzero(actual_gci_locations)[0]
         xaxes = np.zeros(len(actual_gci_locations))
@@ -179,7 +177,6 @@ def main():
 
         gx = ground_truth[0, :]
         gy = ground_truth[1, :]
-
 
         px = predicted_truth[0, :]
         py = predicted_truth[1, :]
@@ -205,10 +202,9 @@ def main():
 
         #####Aplawd_Female
 
-
         threshold = 0.5
-        samples_per_bin = 5
-        histogram_count_threshold = 1
+        samples_per_bin = 3
+        histogram_count_threshold = 0
 
         gci = np.array(
             cluster(
@@ -250,8 +246,9 @@ def main():
     with open(result, 'w') as f:
         f.write('IDR: {:.5f} MR: {:.5f} FAR: {:.5f} IDA: {:.5f}\n'.format(
             idr, mr, far, se))
-        f.write('threshold: {:.5f} samples_per_bin: {:.5f} histogram_count_threshold: {:.5f}'.format(
-            threshold, samples_per_bin, histogram_count_threshold))
+        f.write(
+            'threshold: {:.5f} samples_per_bin: {:.5f} histogram_count_threshold: {:.5f}'.
+            format(threshold, samples_per_bin, histogram_count_threshold))
 
 
 if __name__ == "__main__":

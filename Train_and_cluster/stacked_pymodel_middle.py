@@ -22,50 +22,51 @@ th.manual_seed(42)
 th.cuda.manual_seed_all(42)
 random.seed(42)
 
-def strided_app(a, L, S ):  # Window len = L, Stride len/stepsize = S
-    nrows = ((a.size-L)//S)+1
+
+def strided_app(a, L, S):  # Window len = L, Stride len/stepsize = S
+    nrows = ((a.size - L) // S) + 1
     n = a.strides[0]
-    return np.lib.stride_tricks.as_strided(a, shape=(nrows,L), strides=(S*n,n))
+    return np.lib.stride_tricks.as_strided(
+        a, shape=(nrows, L), strides=(S * n, n))
+
 
 class MyNet(nn.Module):
     def __init__(self, window=200, subwindow=40, dropout=0):
         super().__init__()
 
-        locn_start = float(window/2) - float(subwindow/2)
-        locn_end = float(window/2) + float(subwindow/2)
+        locn_start = float(window / 2) - float(subwindow / 2)
+        locn_end = float(window / 2) + float(subwindow / 2)
 
         c1 = nn.Sequential(
-            nn.Conv1d(1, 10, 5, padding=4),
-            nn.MaxPool1d(2), nn.SELU())
+            nn.Conv1d(1, 10, 5, padding=4), nn.MaxPool1d(2), nn.SELU())
 
         c2 = nn.Sequential(
-            nn.Conv1d(10, 15, 3, padding=2, dilation=2),
-            nn.MaxPool1d(2), nn.SELU())
+            nn.Conv1d(10, 15, 3, padding=2, dilation=2), nn.MaxPool1d(2),
+            nn.SELU())
 
         c3 = nn.Sequential(
-            nn.Conv1d(15, 15, 3, padding=4, dilation=4),
-            nn.MaxPool1d(2), nn.SELU())
+            nn.Conv1d(15, 15, 3, padding=4, dilation=4), nn.MaxPool1d(2),
+            nn.SELU())
 
         self.feature_extractor = nn.Sequential(c1, c2, c3)
 
         self.c4 = nn.Sequential(
-            nn.Conv1d(15 * np.int32(window/subwindow), 30, 3, padding=4, dilation=4),
-            nn.SELU())
+            nn.Conv1d(
+                15 * np.int32(window / subwindow),
+                30,
+                3,
+                padding=4,
+                dilation=4), nn.SELU())
 
         self.classifier = nn.Sequential(
-            nn.Linear(150, 50), nn.SELU(),
-            nn.AlphaDropout(dropout),
-            nn.Linear(50, 10), nn.SELU(),
-            nn.AlphaDropout(dropout),
+            nn.Linear(150, 50), nn.SELU(), nn.AlphaDropout(dropout),
+            nn.Linear(50, 10), nn.SELU(), nn.AlphaDropout(dropout),
             nn.Linear(10, 1))
 
         self.regressor = nn.Sequential(
-            nn.Linear(150, 50), nn.SELU(),
-            nn.AlphaDropout(dropout),
-            nn.Linear(50, 10), nn.SELU(),
-            nn.AlphaDropout(dropout),
-            nn.Linear(10, 1),
-            nn.Hardtanh(locn_start, locn_end))
+            nn.Linear(150, 50), nn.SELU(), nn.AlphaDropout(dropout),
+            nn.Linear(50, 10), nn.SELU(), nn.AlphaDropout(dropout),
+            nn.Linear(10, 1), nn.Hardtanh(locn_start, locn_end))
 
         self._initialize_submodules()
 
@@ -83,7 +84,7 @@ class MyNet(nn.Module):
     def forward(self, x):
         x = self.feature_extractor(x)
         # print(x.size())
-        x = x.view(x.size(0), -1, np.int32(x.size(2)/5.0))
+        x = x.view(x.size(0), -1, np.int32(x.size(2) / 5.0))
         # print("Mohit")
         x = self.c4(x)
         x = x.view(x.size(0), -1)
@@ -93,7 +94,12 @@ class MyNet(nn.Module):
         return y
 
 
-def custom_loader(speechfolder, peakfolder, window, stride, subwindow=40, select=None):
+def custom_loader(speechfolder,
+                  peakfolder,
+                  window,
+                  stride,
+                  subwindow=40,
+                  select=None):
     speechfiles = sorted(glob(os.path.join(speechfolder, '*.npy')))
     peakfiles = sorted(glob(os.path.join(peakfolder, '*.npy')))
 
@@ -118,15 +124,13 @@ def custom_loader(speechfolder, peakfolder, window, stride, subwindow=40, select
     #     for t in peak_windowed_data
     # ])
 
-
-
     lis = []
 
     ######
     # print(peak_distance.shape)
 
-    locn_start = float(window/2) - float(subwindow/2)
-    locn_end = float(window/2) + float(subwindow/2)
+    locn_start = float(window / 2) - float(subwindow / 2)
+    locn_end = float(window / 2) + float(subwindow / 2)
 
     for t in peak_windowed_data:
         a = np.nonzero(t)[0]
@@ -139,10 +143,10 @@ def custom_loader(speechfolder, peakfolder, window, stride, subwindow=40, select
 
     peak_distance = np.array(lis)
 
-
     print(locn_start, locn_end)
 
-    ind = np.logical_and(peak_distance >=locn_start, peak_distance <= locn_end) * 1.0
+    ind = np.logical_and(peak_distance >= locn_start,
+                         peak_distance <= locn_end) * 1.0
     print(np.sum(ind))
 
     # peak_indicator = (peak_distance != -1) * 1.0
@@ -154,17 +158,32 @@ def custom_loader(speechfolder, peakfolder, window, stride, subwindow=40, select
     return speech_windowed_data, peak_distance, peak_indicator
 
 
-def create_dataloader(batch_size, speechfolder, peakfolder, window, stride, subwindow=40, select=None):
+def create_dataloader(batch_size,
+                      speechfolder,
+                      peakfolder,
+                      window,
+                      stride,
+                      subwindow=40,
+                      select=None):
     print(select, " files to be selected")
     speech_windowed_data, peak_distance, peak_indicator = custom_loader(
-        speechfolder, peakfolder, window, stride, subwindow=subwindow, select=select)
+        speechfolder,
+        peakfolder,
+        window,
+        stride,
+        subwindow=subwindow,
+        select=select)
     peak_dataset = np.column_stack((peak_distance, peak_indicator))
     dataset = TensorDataset(
         th.from_numpy(
             np.expand_dims(speech_windowed_data, 1).astype(np.float32)),
         th.from_numpy(peak_dataset.astype(np.float32)))
     dataloader = DataLoader(
-        dataset, batch_size=batch_size, pin_memory=True, drop_last=True, shuffle=True)
+        dataset,
+        batch_size=batch_size,
+        pin_memory=False,
+        drop_last=True,
+        shuffle=True)
     return dataloader
 
 
@@ -217,6 +236,7 @@ def train(model: nn.Module,
 
         peak_distance_target = target[:, 0]
         peak_indicator_target = target[:, 1]
+        # print(data.size())
         output = model(data)
 
         distance = (output[:, 1])
@@ -225,35 +245,38 @@ def train(model: nn.Module,
         loss_bce = F.binary_cross_entropy_with_logits(probabilities,
                                                       peak_indicator_target)
         # print(loss_bce, loss_bce.mean())
-        loss_mse = (distance * peak_indicator_target - peak_distance_target * peak_indicator_target) ** 2
-        loss_mse = loss_mse.sum()/peak_indicator_target.sum()
+        loss_mse = (distance * peak_indicator_target -
+                    peak_distance_target * peak_indicator_target)**2
+        loss_mse = loss_mse.sum() / peak_indicator_target.sum()
         out = (F.sigmoid(probabilities) > gci_thresh).float()
-        loss_misclass = (1 - peak_indicator_target) * (
-            F.sigmoid(probabilities)**2)
+        loss_misclass = (1 - peak_indicator_target) * (F.sigmoid(probabilities)
+                                                       **2)
         # loss_misclass = (1 - peak_indicator_target) * (out)
         loss_misclass = loss_misclass.mean()
 
         misses_temp = (1 - peak_indicator_target) * out
-        misses += misses_temp.mean().data[0]
+        misses += misses_temp.mean().item()
 
         out = (F.sigmoid(probabilities) > gci_thresh).float()
         gci_misclass_temp = peak_indicator_target * (1 - out)
-        gci_misclass += gci_misclass_temp.mean().data[0]
+        gci_misclass += gci_misclass_temp.mean().item()
 
-        loss_corrclass = peak_indicator_target * ((
-            1 - F.sigmoid(probabilities))**2)
+        loss_corrclass = peak_indicator_target * (
+            (1 - F.sigmoid(probabilities))**2)
         loss_corrclass = loss_corrclass.mean()
 
         net_loss = bce_weight * loss_bce + mse_weight * loss_mse
 
-        loss_sum += net_loss.data[0]
-        bce_loss += loss_bce.data[0]
-        mse_loss += loss_mse.data[0]
+        loss_sum += net_loss.item()
+        bce_loss += loss_bce.item()
+        mse_loss += loss_mse.item()
 
         net_loss.backward()
         # TODO: Gradient Clipping
         optimizer.step()
-    return loss_sum / batches , bce_loss / batches , mse_loss / batches , gci_misclass / batches, misses / batches
+    del loss_mse, loss_bce, loss_corrclass, loss_misclass, net_loss
+    th.cuda.empty_cache()
+    return loss_sum / batches, bce_loss / batches, mse_loss / batches, gci_misclass / batches, misses / batches
 
 
 def test(model: nn.Module,
@@ -273,6 +296,7 @@ def test(model: nn.Module,
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
         batch_size = len(data)
+        # print(data.size())
         output = model(data)
 
         peak_distance_target = target[:, 0]
@@ -283,23 +307,26 @@ def test(model: nn.Module,
         distance = output[:, 1]
         probabilities = output[:, 0]
 
-        bce_loss += F.binary_cross_entropy_with_logits(probabilities,
-                                                      peak_indicator_target)
+        bce_loss += F.binary_cross_entropy_with_logits(
+            probabilities, peak_indicator_target).item()
 
-        loss_mse = (distance * peak_indicator_target - peak_distance_target * peak_indicator_target) ** 2
-        loss_mse = loss_mse.sum()/peak_indicator_target.sum()
+        loss_mse = (distance * peak_indicator_target -
+                    peak_distance_target * peak_indicator_target)**2
+        loss_mse = loss_mse.sum() / peak_indicator_target.sum()
 
-        mse_loss += loss_mse
+        mse_loss += loss_mse.item()
 
         out = (F.sigmoid(probabilities) > threshold).float()
         loss_misclass = (1 - peak_indicator_target) * out
         loss_misclass = loss_misclass.mean()
-        eval_misclass += loss_misclass.data[0]
-        gci_misclass += (peak_indicator_target * (1 - out)).mean().data[0]
+        eval_misclass += loss_misclass.item()
+        gci_misclass += (peak_indicator_target * (1 - out)).mean().item()
+        del data, target, output, loss_misclass, loss_mse
+        th.cuda.empty_cache()
 
     mean_misclass = eval_misclass / batches
     mse_loss /= batches  # type: ignore
-    mse_loss = mse_loss.data[0]
+    # mse_loss = mse_loss.data[0]
     gci_misclass = gci_misclass / batches
     bce_loss /= batches
     print(
@@ -308,8 +335,20 @@ def test(model: nn.Module,
 
 
 def main():
-    train_data = create_dataloader(128, 'noise_data/noise_out_raw_bdl/0/babble', 'bdl_peaks', 200, 3, select=100)
-    test_data = create_dataloader(128, 'aplawd_test/speech', 'aplawd_test/peaks', 200, 20, select=80)
+    train_data = create_dataloader(
+        64,
+        '/media/varun/Home/varun/cmu/TASLP/Synthetic/train/speech',
+        '/media/varun/Home/varun/cmu/TASLP/Synthetic/train/peaks',
+        200,
+        3,
+        select=100)
+    test_data = create_dataloader(
+        16,
+        '/media/varun/Home/varun/cmu/TASLP/Synthetic/test/speech',
+        '/media/varun/Home/varun/cmu/TASLP/Synthetic/test/peaks',
+        200,
+        20,
+        select=80)
     model = MyNet()
     save_model = Saver('checkpoints/bdl_0babble')
     use_cuda = True
@@ -329,12 +368,20 @@ def main():
                 'Train Net Loss: {:.4f} BCE Loss {:.4f} MSE Loss {:.4f} GCI {:.4f} Misclass {:.4f} @epoch {}'.
                 format(nloss, bloss, mloss, gci, miss, i))
 
-            if i % 5 == 0:
+            if (i) % 5 == 0:
                 test(model, test_data, use_cuda)
-                checkpoint = save_model.create_checkpoint(model, optimizer, {'win': 160, 'stride': 5 })
-                save_model.save_checkpoint(checkpoint, file_name='bce_epoch_{}.pt'.format(i), append_time=False)
+                checkpoint = save_model.create_checkpoint(
+                    model, optimizer, {
+                        'win': 160,
+                        'stride': 5
+                    })
+                save_model.save_checkpoint(
+                    checkpoint,
+                    file_name='bce_epoch_{}.pt'.format(i),
+                    append_time=False)
             if scheduler is not None:
                 scheduler.step()
+
 
 class Saver:
     def __init__(self, directory: str = 'pytorch_model',
@@ -350,8 +397,9 @@ class Saver:
         timestamp = strftime("%Y_%m_%d__%H_%M_%S", localtime())
         filebasename, fileext = file_name.split('.')
         if append_time:
-            filepath = os.path.join(self.directory, '_'.join(
-                [filebasename, '.'.join([timestamp, fileext])]))
+            filepath = os.path.join(
+                self.directory,
+                '_'.join([filebasename, '.'.join([timestamp, fileext])]))
         else:
             filepath = os.path.join(self.directory, file_name)
         if isinstance(state, nn.Module):
@@ -393,7 +441,6 @@ class Saver:
         checkpoint = {**state_dict, **hyperparam_dict}
 
         return checkpoint
-
 
 
 if __name__ == "__main__":
