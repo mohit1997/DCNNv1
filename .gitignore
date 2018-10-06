@@ -1,3 +1,8 @@
 .vscode
 .mypy_cache
 Childers_data
+*.DAT
+data
+*.pt
+*.pyc
+__pycache__
