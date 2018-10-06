@@ -125,10 +125,6 @@ def custom_loader(speechfolder,
     # ])
 
     lis = []
-
-    ######
-    # print(peak_distance.shape)
-
     locn_start = float(window / 2) - float(subwindow / 2)
     locn_end = float(window / 2) + float(subwindow / 2)
 
@@ -208,7 +204,7 @@ def train(model: nn.Module,
     mse_weight = Variable(th.Tensor([mse_weight]))
     misclass_weight = Variable(th.Tensor([misclass_weight]))
     corclass_weight = Variable(th.Tensor([corclass_weight]))
-    thresh = Variable(th.Tensor([threshold]))
+    # thresh = Variable(th.Tensor([threshold]))
     gci_thresh = Variable(th.Tensor([gci_threshold]))
     batches = len(train_data)
 
@@ -227,16 +223,14 @@ def train(model: nn.Module,
             mse_weight = mse_weight.cuda()
             misclass_weight = misclass_weight.cuda()
             corclass_weight = corclass_weight.cuda()
-            thresh_val = thresh.cuda()
+            # thresh_val = thresh.cuda()
             gci_thresh = gci_thresh.cuda()
 
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
-        # print(len(data))
 
         peak_distance_target = target[:, 0]
         peak_indicator_target = target[:, 1]
-        # print(data.size())
         output = model(data)
 
         distance = (output[:, 1])
@@ -244,7 +238,6 @@ def train(model: nn.Module,
 
         loss_bce = F.binary_cross_entropy_with_logits(probabilities,
                                                       peak_indicator_target)
-        # print(loss_bce, loss_bce.mean())
         loss_mse = (distance * peak_indicator_target -
                     peak_distance_target * peak_indicator_target)**2
         loss_mse = loss_mse.sum() / peak_indicator_target.sum()
@@ -295,8 +288,6 @@ def test(model: nn.Module,
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
-        batch_size = len(data)
-        # print(data.size())
         output = model(data)
 
         peak_distance_target = target[:, 0]
@@ -326,7 +317,6 @@ def test(model: nn.Module,
 
     mean_misclass = eval_misclass / batches
     mse_loss /= batches  # type: ignore
-    # mse_loss = mse_loss.data[0]
     gci_misclass = gci_misclass / batches
     bce_loss /= batches
     print(
@@ -337,15 +327,15 @@ def test(model: nn.Module,
 def main():
     train_data = create_dataloader(
         64,
-        '/media/varun/Home/varun/cmu/TASLP/Synthetic/train/speech',
-        '/media/varun/Home/varun/cmu/TASLP/Synthetic/train/peaks',
+        '/media/varun/Home/varun/cmu/CMU_DATA/bdl_speech_raw',
+        '/media/varun/Home/varun/cmu/CMU_DATA/bdl/bdl_peaks',
         200,
         3,
         select=100)
     test_data = create_dataloader(
         16,
-        '/media/varun/Home/varun/cmu/TASLP/Synthetic/test/speech',
-        '/media/varun/Home/varun/cmu/TASLP/Synthetic/test/peaks',
+        '/media/varun/Home/varun/cmu/CMU_DATA/bdl_speech_raw',
+        '/media/varun/Home/varun/cmu/CMU_DATA/bdl/bdl_peaks',
         200,
         20,
         select=80)
