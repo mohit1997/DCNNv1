@@ -19,12 +19,12 @@ def cluster(gcilocs,
     sind = np.argsort(gcilocs)
     gcilocs = gcilocs[sind]
     weights = weights[sind]
+    numsamples = len(gcilocs)
 
     tind = weights > threshold
     gcilocs = gcilocs[tind]
     weights = weights[tind]
 
-    numsamples = len(gcilocs)
     numbins = numsamples // samples_per_bin
 
     hist, bin_edges = np.histogram(gcilocs, bins=numbins, weights=weights)
